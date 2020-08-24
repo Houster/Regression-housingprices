@@ -1,0 +1,340 @@
+import numpy as np
+import pandas as pd
+
+pd.set_option('display.max_columns', None)
+pd.set_option('display.max_rows', None)
+train=pd.read_csv("../input/train.csv")
+test=pd.read_csv("../input/test.csv")
+data=train.append(test,sort=False)
+print(train.shape)
+print(test.shape)
+print(data.shape)
+
+data.index=data['Id']-1
+data[1455:1465]
+
+#visualize missing values
+print(data.isnull().sum())
+
+#fill in columns with some missing values
+data["Alley"]=data["Alley"].fillna("No")
+data["LotFrontage"]=data["LotFrontage"].fillna(0)
+data["MSZoning"]=data["MSZoning"].fillna("RL")
+data["Utilities"]=data["Utilities"].fillna("AllPub")
+data["Exterior1st"]=data["Exterior1st"].fillna("VinylSd")
+data["Exterior2nd"]=data["Exterior2nd"].fillna("VinylSd")
+data["MasVnrType"]=data["MasVnrType"].fillna("None")
+data["MasVnrArea"]=data["MasVnrArea"].fillna(0)
+data["BsmtQual"]=data["BsmtQual"].fillna("No")
+data["BsmtCond"]=data["BsmtCond"].fillna("No")
+data["BsmtExposure"]=data["BsmtExposure"].fillna("No")
+data["BsmtFinType1"]=data["BsmtFinType1"].fillna("No")
+data["BsmtFinSF1"]=data["BsmtFinSF1"].fillna(0)
+data["BsmtFinType2"]=data["BsmtFinType2"].fillna("No")
+data["BsmtFinSF2"]=data["BsmtFinSF2"].fillna(0)
+data["BsmtUnfSF"]=data["BsmtUnfSF"].fillna(0)
+data["TotalBsmtSF"]=data["TotalBsmtSF"].fillna(0)
+data["Electrical"]=data["Electrical"].fillna("SBrkr")
+data["BsmtFullBath"]=data["BsmtFullBath"].fillna(0)
+data["BsmtHalfBath"]=data["BsmtHalfBath"].fillna(0)
+data["KitchenQual"]=data["KitchenQual"].fillna("TA")
+data["Functional"]=data["Functional"].fillna("Typ")
+data["GarageType"]=data["GarageType"].fillna("No")
+data["GarageYrBlt"]=data["GarageYrBlt"].fillna(data["GarageYrBlt"].median())
+data["GarageFinish"]=data["GarageFinish"].fillna("No")
+data["GarageCars"]=data["GarageCars"].fillna(0)
+data["GarageArea"]=data["GarageArea"].fillna(0)
+data["GarageQual"]=data["GarageQual"].fillna("No")
+data["GarageCond"]=data["GarageCond"].fillna("No")
+data["SaleType"]=data["SaleType"].fillna("WD")
+data["PoolQC"]=data["PoolQC"].fillna("No")
+data["MiscFeature"]=data["MiscFeature"].fillna("No")
+data["FireplaceQu"]=data["FireplaceQu"].fillna("No")
+data["Fence"]=data["Fence"].fillna("No")
+
+#feature importance
+print("important features to SalePrice")
+corr = train.corr()
+corr.sort_values(["SalePrice"], ascending = False, inplace = True)
+print(corr.SalePrice[:10])
+
+#visualize data, plot OverallQual vs SalePrice
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+plt.figure(figsize=(20,5))
+plt.subplot(1,3,1)
+sns.scatterplot(x='GrLivArea', y='SalePrice', data=data)
+plt.subplot(1,3,2)
+sns.scatterplot(x='OverallQual', y='SalePrice', data=data)
+plt.subplot(1,3,3)
+sns.scatterplot(x='GarageCars', y='SalePrice', data=data)
+
+#find outlier
+data.loc[(data['GrLivArea']>4000) & (data['SalePrice']<300000), 'SalePrice']
+
+#delete outlier
+data=data.drop(index=523,axis=0)
+data=data.drop(index=1298, axis=0)
+print(data.shape)
+sns.scatterplot(x='GrLivArea', y='SalePrice', data=data)
+
+#convert categories to labels
+
+data.loc[data['MSSubClass']==60, 'MSSubClass']=0
+data.loc[(data['MSSubClass']==20)|(data['MSSubClass']==120), 'MSSubClass']=1
+data.loc[data['MSSubClass']==75, 'MSSubClass']=2
+data.loc[(data['MSSubClass']==40)|(data['MSSubClass']==70)|(data['MSSubClass']==80), 'MSSubClass']=3
+data.loc[(data['MSSubClass']==50)|(data['MSSubClass']==85)|(data['MSSubClass']==90)|(data['MSSubClass']==160)|(data['MSSubClass']==190), 'MSSubClass']=4
+data.loc[(data['MSSubClass']==30)|(data['MSSubClass']==45)|(data['MSSubClass']==180), 'MSSubClass']=5
+data.loc[(data['MSSubClass']==150), 'MSSubClass']=6
+print('MSSubClass:',data['MSSubClass'].unique())
+
+data.loc[data['MSZoning']=='FV', 'MSZoning']=0
+data.loc[data['MSZoning']=='RL', 'MSZoning']=1
+data.loc[data['MSZoning']=='RH', 'MSZoning']=2
+data.loc[data['MSZoning']=='RM', 'MSZoning']=3
+data.loc[data['MSZoning']=='C (all)', 'MSZoning']=4
+print('MSZoning:',data['MSZoning'].unique())
+
+data.loc[data['BsmtExposure']=='Gd','BsmtExposure']=0
+data.loc[data['BsmtExposure']=='Av','BsmtExposure']=1
+data.loc[data['BsmtExposure']=='Mn','BsmtExposure']=2
+data.loc[data['BsmtExposure']=='No','BsmtExposure']=3
+print('BsmtExposure:',data['BsmtExposure'].unique())
+
+ordinals=[ 'FireplaceQu','PoolQC','ExterQual', 'ExterCond',  'BsmtQual', 'BsmtCond', 'HeatingQC',
+        'KitchenQual', 'GarageQual', 'GarageCond']
+
+def OrdinalstoInt(c):
+    if c=='Ex':
+        return 0
+    elif c=='Gd':
+        return 1
+    elif c=='TA':
+        return 2
+    elif c=='Fa':
+        return 3
+    elif c=='Po':
+        return 4
+    elif c=='No':
+        return 5
+   
+    
+#
+for i in ordinals:
+    data[i]=data[i].apply(OrdinalstoInt)
+    print(i,data[i].unique())
+
+categories=['Street','Alley','LotConfig', 'LandSlope','LandContour', 'Utilities', 'LotShape', 'Neighborhood',
+            'Condition1', 'Condition2', 'BldgType', 'HouseStyle', 'RoofStyle', 'RoofMatl', 'Exterior1st', 'Exterior2nd',
+            'MasVnrType','Foundation', 'BsmtFinType1',  'BsmtFinType2','Heating','Fence','MiscFeature',
+           'CentralAir', 'Electrical','Functional','GarageType', 'GarageFinish', 'PavedDrive', 'SaleType','SaleCondition']
+
+#
+one_hot = pd.get_dummies(data[categories])
+one_hot.head()
+
+data=pd.concat([data,one_hot],axis=1,sort=False)
+for i in categories:
+    data=data.drop(i,axis=1)
+print(data.shape)
+data.head()
+
+#new features
+data['ToTalSF']=data['1stFlrSF']+data['2ndFlrSF']+data['TotalBsmtSF']
+data['ToTalOuterSF']=data['ToTalSF']+data['GarageArea']+data['LotArea']
+data['Year']=data['YearRemodAdd']-data['YearBuilt']
+data['ToTalSFQ']=data['ToTalSF']*data['OverallQual']
+
+#
+data['WoodDeckSF']=(data['WoodDeckSF']==0)*1
+data['OpenPorchSF']=(data['OpenPorchSF']==0)*1
+data['EnclosedPorch']=(data['EnclosedPorch']==0)*1
+data['3SsnPorch']=(data['3SsnPorch']==0)*1
+data['ScreenPorch']=(data['ScreenPorch']==0)*1
+data['PoolArea']=(data['PoolArea']==0)*1
+print(data['WoodDeckSF'].unique())
+print(data['OpenPorchSF'].unique())
+print(data['EnclosedPorch'].unique())
+print(data['3SsnPorch'].unique())
+print(data['ScreenPorch'].unique())
+print(data['PoolArea'].unique())
+
+#normal dist for continuous data
+continuous=['LotFrontage','LotArea','MasVnrArea','YearBuilt','YearRemodAdd','ToTalSF','ToTalOuterSF','Year','ToTalSFQ',
+            'BsmtFinSF1','BsmtFinSF2','TotalBsmtSF','1stFlrSF','2ndFlrSF','GarageYrBlt',
+           'LowQualFinSF','GrLivArea','GarageArea','MiscVal','YrSold']
+
+#
+from scipy.stats import skew
+skew_features=data[continuous].apply(lambda x:skew(x.dropna()))
+skewness=pd.DataFrame({"Skew":skew_features})
+skewness
+
+#
+large_skew=['LotArea','MasVnrArea','ToTalSF','ToTalOuterSF','Year','ToTalSFQ',
+            'BsmtFinSF1','BsmtFinSF2','TotalBsmtSF','1stFlrSF','2ndFlrSF',
+           'LowQualFinSF','GrLivArea','GarageArea','MiscVal']
+
+from scipy.special import boxcox1p
+for item in large_skew:
+    data[item]=boxcox1p(data[item],0.15)
+
+#
+from sklearn.preprocessing import StandardScaler
+scaler=StandardScaler().fit(data[continuous])
+data[continuous]=scaler.transform(data[continuous]
+
+data.head()
+
+#
+sata=data.drop("Id", axis=1)
+train=data.iloc[:1458]
+test=data.iloc[1458:]
+
+#feature importance
+print("important features to SalePrice")
+corr = train.corr()
+corr.sort_values(["SalePrice"], ascending = False, inplace = True)
+print(corr.SalePrice)
+
+#
+features=train.columns.drop('Id')
+features=train.columns.drop('SalePrice')
+
+print(list(features))
+
+#
+from sklearn.model_selection import train_test_split,cross_val_score,cross_val_predict
+from sklearn import metrics
+X_train=train[features]
+y_train=np.log(train["SalePrice"])
+X_train.shape
+
+#models
+import xgboost as xgb
+xgbmodel = xgb.XGBRegressor(colsample_bytree=0.4603, gamma=0.0468, 
+                             learning_rate=0.05, max_depth=3, 
+                             min_child_weight=1.7817, n_estimators=2200,
+                             reg_alpha=0.4640, reg_lambda=0.8571,
+                             subsample=0.5213, silent=1,
+                             random_state =7, nthread = -1)
+
+from sklearn.linear_model import LinearRegression, Lasso, Ridge,ElasticNet,BayesianRidge 
+from sklearn.kernel_ridge import KernelRidge
+from sklearn.svm import SVR
+from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor, AdaBoostRegressor
+from sklearn.neighbors import KNeighborsRegressor
+
+
+LRmodel=LinearRegression()
+Ridgemodel=Ridge(alpha=0.2,max_iter=1000)
+Lassomodel=Lasso(alpha=0.0005,max_iter=1000)
+KRidgemodel=KernelRidge(alpha=0.2, degree=1)
+SVRmodel=SVR()
+GBmodel=GradientBoostingRegressor(n_estimators=150, learning_rate=0.1,max_depth=2)
+KNNmodel=KNeighborsRegressor(n_neighbors=3)
+Adamodel=AdaBoostRegressor(n_estimators=100,learning_rate=0.1)
+ENETmodel = ElasticNet(alpha=0.0005, l1_ratio=.9, random_state=3)
+BRmodel = BayesianRidge()
+RFmodel=RandomForestRegressor()
+models=[LRmodel,Ridgemodel,Lassomodel,KRidgemodel,SVRmodel,GBmodel, KNNmodel, Adamodel, ENETmodel, BRmodel,RFmodel,xgbmodel]
+modelnames=['LRmodel','Ridgemodel','Lassomodel','KRidgemodel','SVRmodel','GBmodel', 'KNNmodel', 'Adamodel','ENETmodel',
+           'BRmodel','RFmodel','xgbmodel']
+
+#model score root mean square error(rmse), 10 fold
+for i in range(len(models)):
+    score=np.sqrt(-cross_val_score(models[i], X_train, y_train, scoring='neg_mean_squared_error', cv=5))
+    print(modelnames[i],"rmse: ", score.mean())
+
+#tuning hyperparameters
+# from sklearn.model_selection import GridSearchCV
+# models=[Ridgemodel,Lassomodel,KRidgemodel,GBmodel]
+# def grid(model,params):
+#     grids=GridSearchCV(model,params,cv=5, scoring="neg_mean_squared_error")
+#     grids.fit(X_train,y_train)
+#     print(grids.best_params_,"; rmse=",np.sqrt(-grids.best_score_))
+# grid(Ridgemodel,{'alpha':[0.2,0.1,0.07,0.05,0.04,0.02,0.01,0.008,0.005,0.003,0.0025,0.002,0.0015,0.001],
+#                  'max_iter':[1000,3000,5000,10000,20000,30000]})
+# grid(Lassomodel,{'alpha':[0.005,0.003,0.0025,0.002,0.0015,0.001, 0.0005],
+#                  'max_iter':[1000,3000,5000,10000,20000,30000]})
+# grid(KRidgemodel,{'alpha':[0.2,0.1,0.07,0.05,0.04,0.02,0.01,0.008,0.005,0.003,0.0025,0.002,0.0015,0.001, 0.005],
+#                  'degree':[1,2,3,4,5,6]})
+# grid(GBmodel,{'learning_rate':[0.2,0.1,0.05],
+#                  'max_depth':[2],
+#              'n_estimators':[50,100,150]})
+# grid(ENETmodel,{'alpha':[0.2,0.1,0.05,0.01,0.005,0.001,0.0005,0.0001],})
+
+#
+xgb2=xgb.XGBRegressor(colsample_bytree=0.4603, gamma=0.0468, 
+                             learning_rate=0.05, max_depth=3, 
+                             min_child_weight=1.7817, n_estimators=2200,
+                             reg_alpha=0.4640, reg_lambda=0.8571,
+                             subsample=0.5213, silent=1,
+                             random_state =7, nthread = -1)
+
+#stacking features
+Lassomodel.fit(X_train,y_train)
+Ridgemodel.fit(X_train,y_train)
+KRidgemodel.fit(X_train,y_train)
+Adamodel.fit(X_train,y_train)
+GBmodel.fit(X_train,y_train)
+KNNmodel.fit(X_train,y_train)
+ENETmodel.fit(X_train,y_train)
+BRmodel.fit(X_train,y_train)
+RFmodel.fit(X_train,y_train)
+xgbmodel.fit(X_train,y_train)
+
+Lassopredtr=Lassomodel.predict(X_train)
+Ridgepredtr=Ridgemodel.predict(X_train)
+KRidgepredtr=KRidgemodel.predict(X_train)
+Adapredtr=Adamodel.predict(X_train)
+GBpredtr=GBmodel.predict(X_train)
+KNNpredtr=KNNmodel.predict(X_train)
+ENETpredtr=Adamodel.predict(X_train)
+BRpredtr=GBmodel.predict(X_train)
+RFpredtr=KNNmodel.predict(X_train)
+xgbpredtr=xgbmodel.predict(X_train)
+
+newfeatures=pd.DataFrame({"ENET":ENETpredtr,"KR":KRidgepredtr,"GB":GBpredtr,"Lasso":Lassopredtr,'Ridge':Ridgepredtr,
+                          "BR":BRpredtr,"RF":RFpredtr,'XGB':xgbpredtr})
+newfeatures.head()
+
+#stacking 2nd layer Gradient boosting
+score=np.sqrt(-cross_val_score(xgb2, newfeatures, y_train, scoring='neg_mean_squared_error', cv=5))
+print("stacking","rmse: ", score.mean())
+
+
+xgb2.fit(newfeatures,y_train)
+
+#predict final result
+X_test=test[features]
+# X_test=pd.DataFrame(pca.fit_transform(X_test))
+
+Lassopredte=Lassomodel.predict(X_test)
+Ridgepredte=Ridgemodel.predict(X_test)
+KRidgepredte=KRidgemodel.predict(X_test)
+Adapredte=Adamodel.predict(X_test)
+GBpredte=GBmodel.predict(X_test)
+KNNpredte=KNNmodel.predict(X_test)
+ENETpredte=Adamodel.predict(X_test)
+BRpredte=GBmodel.predict(X_test)
+RFpredte=KNNmodel.predict(X_test)
+xgbpredte=xgbmodel.predict(X_test)
+
+newfeatureste=pd.DataFrame({"ENET":ENETpredte,'KR':KRidgepredte,"GB":GBpredte,"Lasso":Lassopredte,
+                            'Ridge':Ridgepredte,"BR":BRpredte,"RF":RFpredte,'XGB':xgbpredte})
+newfeatureste.head()
+
+
+#
+predictions=xgb2.predict(newfeatureste)
+predictions=np.exp(predictions)
+print(predictions.shape)
+predictions[:10]
+
+results=pd.DataFrame({"Id":data[1458:]["Id"],"SalePrice":predictions})
+results.head()
+
+results.to_csv("submission.csv", index=False)
